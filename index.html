@@ -869,7 +869,7 @@ function showEmpty(msg) {
 ============================================= */
 function openPlayer(id, title, channel, date) {
   var choice = prompt(
-    "Escolha o player:\n\n1 = Piped (leve)\n2 = Invidious (leve)\n3 = YouTube (mais compatível)",
+    "Escolha o player:\n\n1 = Piped (leve)\n2 = Invidious (leve)\n3 = Invidious 2",
     "1"
   );
 
@@ -878,7 +878,7 @@ function openPlayer(id, title, channel, date) {
   if (choice === "2") {
     url = "https://yewtu.be/watch?v=" + id;
   } else if (choice === "3") {
-    url = "https://www.youtube.com/embed/VIDEO_ID?" + id + "modestbranding=1&rel=0";
+    url = "https://yt.chocolatemoo53.com/watch?v=" + id;
   } else {
     url = "https://piped.video/watch?v=" + id;
   }
