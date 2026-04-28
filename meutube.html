@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>MeuTube</title>
+<style>
+* { -webkit-box-sizing: border-box; box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0d0d0d;
+  --surface: #161616;
+  --card:    #1e1e1e;
+  --border:  #2c2c2c;
+  --red:     #e8001d;
+  --red2:    #b5001a;
+  --text:    #efefef;
+  --muted:   #7a7a7a;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+/* HEADER */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  z-index: 100;
+}
+
+#logo {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  gap: 6px;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+
+#logo svg { width: 26px; height: 18px; }
+
+#logo span {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+#logo span em { color: var(--red); font-style: normal; }
+
+/* FILTER CHIPS */
+#chips {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 6px;
+  -webkit-flex: 1; flex: 1;
+  scrollbar-width: none;
+}
+#chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.chip.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+/* MAIN */
+#main {
+  padding-top: 58px;
+  padding-bottom: 64px;
+  min-height: 100vh;
+}
+
+/* FEED */
+#feed { padding: 8px 10px 0; }
+
+/* CARDS */
+.video-card {
+  background: var(--card);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+}
+
+.video-card:active { opacity: 0.8; }
+
+.thumb-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+  overflow: hidden;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+
+.thumb-wrap img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-play {
+  position: absolute;
+  top: 50%; left: 50%;
+  -webkit-transform: translate(-50%,-50%); transform: translate(-50%,-50%);
+  width: 48px; height: 48px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+}
+
+.thumb-play svg { width: 20px; height: 20px; fill: #fff; margin-left: 3px; }
+
+.new-badge {
+  position: absolute;
+  top: 6px; left: 6px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-info { padding: 9px 11px 11px; }
+
+.card-channel {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.card-date { font-size: 11px; color: var(--muted); }
+
+/* PLAYER */
+#player-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  z-index: 200;
+  -webkit-flex-direction: column; flex-direction: column;
+}
+
+#player-overlay.open {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+}
+
+#yt-wrap {
+  width: 100%;
+  padding-top: 56.25%;
+  position: relative;
+  background: #000;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+
+#yt-wrap iframe {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: none;
+}
+
+#player-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  gap: 10px;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+
+#btn-back {
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+#btn-back svg { width: 22px; height: 22px; fill: #fff; display: block; }
+
+#vol-icon {
+  font-size: 14px;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+  min-width: 18px;
+  text-align: center;
+}
+
+#vol-range {
+  -webkit-flex: 1; flex: 1;
+  -webkit-appearance: none; appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+#vol-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--red);
+  cursor: pointer;
+}
+
+#btn-fs {
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+#btn-fs svg { width: 22px; height: 22px; fill: #fff; display: block; }
+
+#player-info {
+  -webkit-flex: 1; flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 14px;
+}
+
+#p-channel {
+  font-size: 10px; font-weight: 800;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 5px;
+}
+
+#p-title {
+  font-size: 15px; font-weight: 700;
+  color: #fff; line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+#p-date { font-size: 11px; color: var(--muted); }
+
+/* STATES */
+.spinner-wrap {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-justify-content: center; justify-content: center;
+  -webkit-align-items: center; align-items: center;
+  padding: 50px 20px;
+  -webkit-flex-direction: column; flex-direction: column;
+  gap: 12px;
+}
+
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  -webkit-animation: spin 0.7s linear infinite; animation: spin 0.7s linear infinite;
+}
+
+@-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner-label { color: var(--muted); font-size: 12px; }
+
+.empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 13px; line-height: 1.6; }
+
+.err {
+  background: #1a0808;
+  border: 1px solid #3a1212;
+  color: #ff9999;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 10px;
+}
+
+/* BOTTOM NAV */
+#bot-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  z-index: 100;
+}
+
+.nav-btn {
+  -webkit-flex: 1; flex: 1;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.nav-btn.active { color: var(--red); }
+.nav-btn svg { width: 21px; height: 21px; fill: currentColor; }
+
+/* SETTINGS */
+#settings-page {
+  display: none;
+  padding: 16px 14px;
+}
+
+#settings-page.open { display: block; }
+
+#settings-page h3 {
+  font-size: 14px; font-weight: 800;
+  color: #fff; margin-bottom: 4px;
+}
+
+.s-note {
+  font-size: 11px; color: var(--muted);
+  line-height: 1.5; margin-bottom: 16px;
+}
+
+.s-group { margin-bottom: 14px; }
+
+.s-group label {
+  display: block;
+  font-size: 10px; font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+
+.s-group input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.s-group input:focus { border-color: var(--red); }
+
+.btn-primary {
+  background: var(--red);
+  color: #fff; border: none;
+  padding: 11px 22px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 800;
+  cursor: pointer;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 10px;
+}
+.btn-primary:active { background: var(--red2); }
+
+.btn-secondary {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.channel-list { margin-top: 16px; }
+
+.ch-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin-bottom: 8px;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: space-between; justify-content: space-between;
+  gap: 8px;
+}
+
+.ch-name {
+  font-size: 12px; font-weight: 700;
+  color: var(--text);
+  -webkit-flex: 1; flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ch-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+
+.section-head {
+  font-size: 10px; font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 2px 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="logo">
+    <svg viewBox="0 0 26 18" fill="none">
+      <rect width="26" height="18" rx="4" fill="#e8001d"/>
+      <polygon points="10,4 21,9 10,14" fill="white"/>
+    </svg>
+    <span>Meu<em>Tube</em></span>
+  </div>
+  <div id="chips">
+    <!-- chips gerados via JS -->
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="feed">
+    <div id="feed-content"></div>
+  </div>
+  <div id="settings-page">
+    <h3>⚙️ Canais</h3>
+    <p class="s-note">Seus canais configurados. Para adicionar novos, edite o arquivo .html no computador.</p>
+    <div class="channel-list" id="ch-list"></div>
+
+    <div style="margin-top:20px;">
+      <h3 style="margin-bottom:4px;">Adicionar canal</h3>
+      <p class="s-note">Cole o Channel ID (começa com UC...) e o nome que quiser exibir.</p>
+      <div class="s-group">
+        <label>Nome do Canal</label>
+        <input type="text" id="add-name" placeholder="Ex: MeuCanal" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="s-group">
+        <label>Channel ID</label>
+        <input type="text" id="add-id" placeholder="UCxxxxxxxxxxxxxxxxxxxxxxxxx" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <button class="btn-primary" onclick="addChannel()">Adicionar</button>
+      <button class="btn-secondary" onclick="resetChannels()">Restaurar padrão</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER -->
+<div id="player-overlay">
+  <div id="yt-wrap">
+    <iframe id="yt-iframe" src="" allowfullscreen allow="autoplay; fullscreen" frameborder="0" scrolling="no"></iframe>
+  </div>
+  <div id="player-bar">
+    <button id="btn-back" onclick="closePlayer()">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l4.88-4.88L11 5l-7 7 7 7 1.71-1.71L7.83 13H20v-2z"/></svg>
+    </button>
+    <span id="vol-icon">🔊</span>
+    <input type="range" id="vol-range" min="0" max="100" value="80" oninput="setVol(this.value)">
+    <button id="btn-fs" onclick="goFS()">
+      <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+    </button>
+  </div>
+  <div id="player-info">
+    <div id="p-channel"></div>
+    <div id="p-title"></div>
+    <div id="p-date"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div id="bot-nav">
+  <button class="nav-btn active" id="nav-home" onclick="navTo('home')">
+    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    Início
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="navTo('settings')">
+    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    Canais
+  </button>
+</div>
+
+<script>
+/* =============================================
+   CANAIS PRÉ-CONFIGURADOS
+   Para adicionar mais: copie uma linha e cole
+   { name: 'Nome', id: 'UCxxxxxxxxx' }
+============================================= */
+var DEFAULT_CHANNELS = [
+  { name: '1155 do ET',           id: 'UCG-KRRI41P4TsaOMeAM9dug' },
+  { name: 'Cortes do ET',         id: 'UC3HBGe8y6rFOAR3l118eUag' },
+  { name: 'Cadê a Chave',         id: 'UCkKoAOSBMOFWnGqrVl0EZTg' }, /* ← precisa confirmar, veja nota abaixo */
+  { name: 'República CDN',        id: 'UChmOR1T5ZNnbRUba3lHRTOg' },
+  { name: 'HandsomeD',            id: 'UCKsqcDPo74EUAUOiu4AOzQQ' },
+  { name: 'HandsomeD TV',         id: 'UCA3EZuxLGcfQGjbulqSyIaw' },
+  { name: 'TATICADS',             id: 'UCZlR0HdudnFNQ_5KZAMGCmg' }
+];
+
+/* NOTA: O canal "Cadê a Chave" usa URL customizada (youtube.com/cadeachave)
+   e o ID acima pode não ser exato. Se não carregar vídeos desse canal,
+   veja as instruções no final do arquivo para corrigir. */
+
+/* =============================================
+   ESTADO
+============================================= */
+var channels = [];        // lista ativa de canais
+var currentFilter = 'all'; // 'all' ou channel id
+var allVideos = [];        // todos os vídeos carregados
+var loaded = 0;            // canais já carregados
+var currentPage = 'home';
+
+/* =============================================
+   RSS → CORS PROXY
+   O iPad 4 com iOS 10 não consegue fazer
+   requisição direta ao feed RSS do YouTube
+   por causa de CORS. Usamos um proxy público
+   gratuito e sem registro.
+============================================= */
+var PROXIES = [
+  'https://api.allorigins.win/get?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://corsproxy.io/?'
+];
+
+function rssUrl(channelId) {
+  return 'https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId;
+}
+
+/* =============================================
+   INIT
+============================================= */
+window.onload = function() {
+  loadChannelStorage();
+  buildChips();
+  buildChList();
+  loadAllFeeds();
+};
+
+/* =============================================
+   STORAGE
+============================================= */
+function loadChannelStorage() {
+  try {
+    var stored = localStorage.getItem('mt_channels');
+    if (stored) {
+      channels = JSON.parse(stored);
+    } else {
+      channels = DEFAULT_CHANNELS.slice();
+    }
+  } catch(e) {
+    channels = DEFAULT_CHANNELS.slice();
+  }
+}
+
+function saveChannelStorage() {
+  try { localStorage.setItem('mt_channels', JSON.stringify(channels)); } catch(e) {}
+}
+
+/* =============================================
+   CHIPS (filtros de canal no header)
+============================================= */
+function buildChips() {
+  var bar = document.getElementById('chips');
+  var html = '<button class="chip active" data-id="all" onclick="filterBy(\'all\', this)">Todos</button>';
+  for (var i = 0; i < channels.length; i++) {
+    html += '<button class="chip" data-id="' + channels[i].id
+      + '" onclick="filterBy(\'' + channels[i].id + '\', this)">'
+      + escH(channels[i].name) + '</button>';
+  }
+  bar.innerHTML = html;
+}
+
+function filterBy(id, el) {
+  currentFilter = id;
+  var chips = document.getElementById('chips').getElementsByClassName('chip');
+  for (var i = 0; i < chips.length; i++) chips[i].className = 'chip';
+  el.className = 'chip active';
+  renderFeed();
+}
+
+/* =============================================
+   LOAD RSS DE TODOS OS CANAIS
+============================================= */
+function loadAllFeeds() {
+  allVideos = [];
+  loaded = 0;
+  showSpinner('Buscando vídeos...');
+
+  if (channels.length === 0) {
+    showEmpty('Nenhum canal configurado. Vá em Canais para adicionar.');
+    return;
+  }
+
+  for (var i = 0; i < channels.length; i++) {
+    (function(ch) {
+      fetchRSS(ch.id, ch.name, function(videos) {
+        for (var j = 0; j < videos.length; j++) allVideos.push(videos[j]);
+        loaded++;
+        if (loaded === channels.length) {
+          allVideos.sort(function(a, b) { return b.ts - a.ts; });
+          renderFeed();
+        }
+      });
+    })(channels[i]);
+  }
+}
+
+function fetchRSS(channelId, channelName, cb) {
+  var target = encodeURIComponent(rssUrl(channelId));
+  tryProxies(0);
+
+  function tryProxies(index) {
+    if (index >= PROXIES.length) {
+      console.warn('Todos proxies falharam:', channelName);
+      cb([]);
+      return;
+    }
+
+    var proxy = PROXIES[index];
+    var url = proxy + target;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 5000;
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var xml = '';
+
+          // allorigins retorna JSON
+          if (proxy.indexOf('allorigins') !== -1) {
+            var json = JSON.parse(xhr.responseText);
+            xml = json.contents || '';
+          } else {
+            xml = xhr.responseText;
+          }
+
+          // valida se veio XML mesmo
+          if (!xml || xml.indexOf('<feed') === -1) {
+            throw 'Resposta inválida';
+          }
+
+          var videos = parseRSS(xml, channelName, channelId);
+          cb(videos);
+        } catch (e) {
+          tryProxies(index + 1);
+        }
+      } else {
+        tryProxies(index + 1);
+      }
+    };
+
+    xhr.onerror = function() {
+      tryProxies(index + 1);
+    };
+
+    xhr.ontimeout = function() {
+      tryProxies(index + 1);
+    };
+
+    xhr.send();
+  }
+}
+
+/* =============================================
+   PARSER RSS (XML como texto — sem DOMParser
+   pois é bugado em alguns WebKits antigos)
+============================================= */
+function parseRSS(xml, channelName, channelId) {
+  var videos = [];
+
+  // Extrai blocos <entry>
+  var entries = xml.split('<entry>');
+  // índice 0 é o cabeçalho, pula
+  for (var i = 1; i < entries.length; i++) {
+    var block = entries[i];
+
+    var videoId  = grab(block, '<yt:videoId>', '</yt:videoId>');
+    var title    = grabCDATA(block, '<title>',     '</title>');
+    var pubRaw   = grab(block, '<published>',  '</published>');
+    var thumb    = grabAttr(block, '<media:thumbnail', 'url');
+
+    if (!videoId) continue;
+
+    var ts = pubRaw ? new Date(pubRaw).getTime() : 0;
+
+    videos.push({
+      id:      videoId,
+      title:   decodeXML(title),
+      channel: channelName,
+      chId:    channelId,
+      pub:     pubRaw,
+      ts:      ts,
+      thumb:   thumb || ('https://i.ytimg.com/vi/' + videoId + '/mqdefault.jpg')
+    });
+  }
+
+  return videos;
+}
+
+function grab(str, open, close) {
+  var s = str.indexOf(open);
+  if (s === -1) return '';
+  s += open.length;
+  var e = str.indexOf(close, s);
+  if (e === -1) return '';
+  return str.substring(s, e).trim();
+}
+
+function grabCDATA(str, open, close) {
+  var raw = grab(str, open, close);
+  // remove CDATA wrapper se existir
+  raw = raw.replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '');
+  return raw.trim();
+}
+
+function grabAttr(str, tag, attr) {
+  var s = str.indexOf(tag);
+  if (s === -1) return '';
+  var end = str.indexOf('>', s);
+  var chunk = str.substring(s, end);
+  var a = attr + '="';
+  var ai = chunk.indexOf(a);
+  if (ai === -1) return '';
+  ai += a.length;
+  var ae = chunk.indexOf('"', ai);
+  return chunk.substring(ai, ae);
+}
+
+function decodeXML(s) {
+  return s
+    .replace(/&amp;/g,  '&')
+    .replace(/&lt;/g,   '<')
+    .replace(/&gt;/g,   '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g,  "'")
+    .replace(/&apos;/g, "'");
+}
+
+/* =============================================
+   RENDER FEED
+============================================= */
+function renderFeed() {
+  var list = allVideos;
+  if (currentFilter !== 'all') {
+    list = [];
+    for (var i = 0; i < allVideos.length; i++) {
+      if (allVideos[i].chId === currentFilter) list.push(allVideos[i]);
+    }
+  }
+
+  var fc = document.getElementById('feed-content');
+
+  if (list.length === 0) {
+    fc.innerHTML = '<p class="empty">Nenhum vídeo encontrado.<br>Verifique os IDs dos canais em Canais.</p>';
+    return;
+  }
+
+  var now = Date.now();
+  var html = '<div class="section-head">▶ ' + list.length + ' vídeos recentes</div>';
+
+  for (var j = 0; j < list.length; j++) {
+    var v    = list[j];
+    var isNew = v.ts && (now - v.ts) < 48 * 3600 * 1000;
+    var dateStr = v.ts ? relTime(new Date(v.ts)) : '';
+
+    html += '<div class="video-card" onclick="openPlayer('
+      + "'" + v.id + "','" + escAttr(v.title) + "','" + escAttr(v.channel) + "','" + escAttr(dateStr) + "'"
+      + ')">'
+      + '<div class="thumb-wrap">'
+      + '<img src="' + v.thumb + '" alt="" loading="lazy">'
+      + '<div class="thumb-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>'
+      + (isNew ? '<span class="new-badge">Novo</span>' : '')
+      + '</div>'
+      + '<div class="card-info">'
+      + '<div class="card-channel">' + escH(v.channel) + '</div>'
+      + '<div class="card-title">'  + escH(v.title)   + '</div>'
+      + '<div class="card-date">'   + escH(dateStr)   + '</div>'
+      + '</div></div>';
+  }
+
+  fc.innerHTML = html;
+}
+
+function showSpinner(msg) {
+  document.getElementById('feed-content').innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div>'
+    + (msg ? '<span class="spinner-label">' + msg + '</span>' : '')
+    + '</div>';
+}
+
+function showEmpty(msg) {
+  document.getElementById('feed-content').innerHTML = '<p class="empty">' + msg + '</p>';
+}
+
+/* =============================================
+   PLAYER
+============================================= */
+function openPlayer(id, title, channel, date) {
+  var choice = prompt(
+    "Escolha o player:\n\n1 = Piped (leve)\n2 = Invidious (leve)\n3 = YouTube (mais compatível)",
+    "1"
+  );
+
+  var url;
+
+  if (choice === "2") {
+    url = "https://yewtu.be/watch?v=" + id;
+  } else if (choice === "3") {
+    url = "https://www.youtube.com/embed/VIDEO_ID?" + id + "modestbranding=1&rel=0";
+  } else {
+    url = "https://piped.video/watch?v=" + id;
+  }
+
+  window.open(url, "_blank");
+}
+
+function closePlayer() {
+  document.getElementById('yt-iframe').src = '';
+  document.getElementById('player-overlay').className = '';
+}
+
+function setVol(v) {
+  v = parseInt(v, 10);
+  var icon = document.getElementById('vol-icon');
+  icon.textContent = v === 0 ? '🔇' : v < 40 ? '🔉' : '🔊';
+  try {
+    var msg = JSON.stringify({ event: 'command', func: 'setVolume', args: [v] });
+    document.getElementById('yt-iframe').contentWindow.postMessage(msg, '*');
+  } catch(e) {}
+}
+
+function goFS() {
+  var iframe = document.getElementById('yt-iframe');
+  if      (iframe.requestFullscreen)            iframe.requestFullscreen();
+  else if (iframe.webkitRequestFullscreen)      iframe.webkitRequestFullscreen();
+  else if (iframe.webkitEnterFullscreen)        iframe.webkitEnterFullscreen();
+  else {
+    // fallback: expande via CSS
+    var ov = document.getElementById('player-overlay');
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;z-index:9999;';
+    var wrap = document.getElementById('yt-wrap');
+    wrap.style.cssText = '-webkit-flex:1;flex:1;padding-top:0;';
+    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+  }
+}
+
+/* =============================================
+   NAV
+============================================= */
+function navTo(page) {
+  currentPage = page;
+  document.getElementById('nav-home').className     = 'nav-btn' + (page === 'home'     ? ' active' : '');
+  document.getElementById('nav-settings').className = 'nav-btn' + (page === 'settings' ? ' active' : '');
+  document.getElementById('feed').style.display          = page === 'home'     ? 'block' : 'none';
+  document.getElementById('settings-page').className     = page === 'settings' ? 'open'  : '';
+  document.getElementById('chips').style.display         = page === 'home'     ? '-webkit-flex' : 'none';
+  if (page === 'settings') buildChList();
+}
+
+/* =============================================
+   SETTINGS — gerenciar canais
+============================================= */
+function buildChList() {
+  var el = document.getElementById('ch-list');
+  if (!el) return;
+  var html = '';
+  for (var i = 0; i < channels.length; i++) {
+    html += '<div class="ch-item">'
+      + '<span class="ch-dot"></span>'
+      + '<span class="ch-name">' + escH(channels[i].name) + '</span>'
+      + '<button class="btn-secondary" onclick="removeChannel(' + i + ')">✕</button>'
+      + '</div>';
+  }
+  el.innerHTML = html || '<p class="empty" style="padding:10px 0;">Nenhum canal.</p>';
+}
+
+function addChannel() {
+  var name = document.getElementById('add-name').value.trim();
+  var id   = document.getElementById('add-id').value.trim();
+  if (!name || !id) { alert('Preencha nome e Channel ID.'); return; }
+  if (id.indexOf('UC') !== 0) { alert('Channel ID deve começar com UC...'); return; }
+  channels.push({ name: name, id: id });
+  saveChannelStorage();
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-id').value = '';
+  buildChList();
+  buildChips();
+  allVideos = [];
+  loaded = 0;
+  showSpinner('Atualizando...');
+  loadAllFeeds();
+}
+
+function removeChannel(i) {
+  if (!confirm('Remover "' + channels[i].name + '"?')) return;
+  channels.splice(i, 1);
+  saveChannelStorage();
+  buildChList();
+  buildChips();
+  allVideos = allVideos.filter(function(v) {
+    for (var j = 0; j < channels.length; j++) {
+      if (v.chId === channels[j].id) return true;
+    }
+    return false;
+  });
+  renderFeed();
+}
+
+function resetChannels() {
+  if (!confirm('Restaurar canais originais?')) return;
+  channels = DEFAULT_CHANNELS.slice();
+  saveChannelStorage();
+  buildChList();
+  buildChips();
+  allVideos = [];
+  loaded = 0;
+  loadAllFeeds();
+  navTo('home');
+}
+
+/* =============================================
+   HELPERS
+============================================= */
+function escH(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s || '').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+}
+
+function relTime(date) {
+  var d = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (d < 60)      return 'agora mesmo';
+  if (d < 3600)    return Math.floor(d/60) + 'm atrás';
+  if (d < 86400)   return Math.floor(d/3600) + 'h atrás';
+  if (d < 2592000) return Math.floor(d/86400) + 'd atrás';
+  return Math.floor(d/2592000) + ' meses atrás';
+}
+</script>
+
+<!--
+=======================================================
+  NOTA SOBRE O CANAL "CADÊ A CHAVE"
+=======================================================
+  Esse canal usa URL customizada (youtube.com/cadeachave)
+  e o Channel ID real pode ser diferente do que está aqui.
+  Se os vídeos não aparecerem:
+
+  1. No desktop, acesse: https://www.youtube.com/@cadeachave
+  2. Clique com botão direito → "Ver código fonte"
+  3. Use Ctrl+F e busque por: channelId
+  4. O valor UCxxxxxx que aparecer é o ID correto
+  5. Substitua no código acima onde está:
+     { name: 'Cadê a Chave', id: 'UCkKoAOSBMOFWnGqrVl0EZTg' }
+
+=======================================================
+  COMO ADICIONAR MAIS CANAIS SEM EDITAR O CÓDIGO
+=======================================================
+  Abra o app no iPad → toque em "Canais" (ícone de engrenagem)
+  → role para baixo → preencha Nome e Channel ID → Adicionar
+
+  Para achar Channel IDs: acesse o canal no YouTube,
+  olhe a URL — se tiver /channel/UCxxxxx o ID está lá.
+  Se não, acesse o canal e veja o código fonte (Ctrl+U no desktop)
+  e busque por "channelId".
+=======================================================
+-->
+</body>
+</html>
