@@ -213,10 +213,11 @@ html, body {
   -webkit-flex-shrink: 0; flex-shrink: 0;
 }
 
-#native-player {
+#player-frame {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
+  border: none;
   background: #000;
 }
 
@@ -230,13 +231,16 @@ html, body {
   -webkit-flex-shrink: 0; flex-shrink: 0;
 }
 
-#btn-back {
+#btn-back, #btn-switch {
   background: none;
   border: none;
   padding: 6px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   -webkit-flex-shrink: 0; flex-shrink: 0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 #btn-back svg { width: 22px; height: 22px; fill: #fff; display: block; }
 
@@ -248,16 +252,6 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-#btn-fs {
-  background: none;
-  border: none;
-  padding: 6px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-flex-shrink: 0; flex-shrink: 0;
-}
-#btn-fs svg { width: 22px; height: 22px; fill: #fff; display: block; }
 
 #player-info {
   -webkit-flex: 1; flex: 1;
@@ -489,16 +483,14 @@ html, body {
 <!-- PLAYER -->
 <div id="player-overlay">
   <div id="yt-wrap">
-    <video id="native-player" controls playsinline webkit-playsinline preload="metadata"></video>
+    <iframe id="player-frame" allowfullscreen allow="autoplay; encrypted-media"></iframe>
   </div>
   <div id="player-bar">
     <button id="btn-back" onclick="closePlayer()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l4.88-4.88L11 5l-7 7 7 7 1.71-1.71L7.83 13H20v-2z"/></svg>
     </button>
-    <span id="player-msg">Carregando mídias...</span>
-    <button id="btn-fs" onclick="goFS()">
-      <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-    </button>
+    <span id="player-msg">Carregando...</span>
+    <button id="btn-switch" onclick="switchServer()">Trocar Servidor</button>
   </div>
   <div id="player-info">
     <div id="p-channel"></div>
@@ -531,15 +523,14 @@ var DEFAULT_CHANNELS = [
   { name: 'TATICADS',             id: 'UCZlR0HdudnFNQ_5KZAMGCmg' }
 ];
 
-/* INSTÂNCIAS PÚBLICAS DO INVIDIOUS (COM PROXY DE MÍDIA COMPATÍVEL) */
-var INVIDIOUS_INSTANCES = [
-  'https://invidious.nerqv.ps',
-  'https://inv.tux.pizza',
-  'https://invidious.projectsegfau.lt',
-  'https://vid.puffyan.us'
+/* EMBED INSTANCES QUE BURLAM CORS */
+var EMBED_PROVIDERS = [
+  function(id) { return 'https://piped.video/embed/' + id + '?autoplay=1'; },
+  function(id) { return 'https://invidious.nerqv.ps/embed/' + id + '?autoplay=1'; },
+  function(id) { return 'https://inv.tux.pizza/embed/' + id + '?autoplay=1'; },
+  function(id) { return 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1'; }
 ];
 
-/* PROXIES DE FEED RSS */
 var PROXIES = [
   'https://api.allorigins.win/get?url=',
   'https://api.codetabs.com/v1/proxy?quest=',
@@ -550,6 +541,8 @@ var channels = [];
 var currentFilter = 'all';
 var allVideos = [];
 var loaded = 0;
+var currentVideoId = '';
+var currentProviderIdx = 0;
 
 window.onload = function() {
   loadChannelStorage();
@@ -748,130 +741,35 @@ function showEmpty(msg) {
   document.getElementById('feed-content').innerHTML = '<p class="empty">' + msg + '</p>';
 }
 
-/* PLAYER COM EXTRAÇÃO DE MP4 H.264 VIA INVIDIOUS PROXY */
+/* REPRODUÇÃO VIA EMBED DE ALTA COMPATIBILIDADE */
 function openPlayer(id, title, channel, date) {
+  currentVideoId = id;
+  currentProviderIdx = 0;
+  
   document.getElementById('p-title').textContent = title || '';
   document.getElementById('p-channel').textContent = channel || '';
   document.getElementById('p-date').textContent = date || '';
-  document.getElementById('player-msg').textContent = 'Conectando ao servidor...';
-  
   document.getElementById('player-overlay').className = 'open';
 
-  var video = document.getElementById('native-player');
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-
-  tryInvidious(0);
-
-  function tryInvidious(index) {
-    if (index >= INVIDIOUS_INSTANCES.length) {
-      document.getElementById('player-msg').textContent = 'Erro ao carregar mídia.';
-      alert('Não foi possível obter um link direto compatível no momento.');
-      return;
-    }
-
-    var baseUrl = INVIDIOUS_INSTANCES[index];
-    var apiUrl = baseUrl + '/api/v1/videos/' + id;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', apiUrl, true);
-    xhr.timeout = 7000;
-
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            var format = findCompatibleFormat(data.formatStreams);
-
-            if (format && format.url) {
-              // Garante o uso do proxy do próprio Invidious para evitar bloqueios de CORS/MIME no Safari
-              var finalUrl = format.url;
-              if (finalUrl.indexOf('http') !== 0) {
-                finalUrl = baseUrl + finalUrl;
-              }
-              
-              // Força o roteamento pelo proxy da instância se não estiver
-              if (finalUrl.indexOf('local=true') === -1) {
-                finalUrl += (finalUrl.indexOf('?') === -1 ? '?' : '&') + 'local=true';
-              }
-
-              document.getElementById('player-msg').textContent = 'Pronto';
-              video.src = finalUrl;
-              video.load();
-              
-              // Execução segura para iOS 10 (Inicia no play e lida com bloqueios)
-              var playPromise = video.play();
-              if (playPromise !== undefined) {
-                playPromise.catch(function() {
-                  video.muted = true;
-                  video.play();
-                });
-              }
-            } else {
-              tryInvidious(index + 1);
-            }
-          } catch(e) {
-            tryInvidious(index + 1);
-          }
-        } else {
-          tryInvidious(index + 1);
-        }
-      }
-    };
-
-    xhr.onerror = xhr.ontimeout = function() { tryInvidious(index + 1); };
-    xhr.send();
-  }
+  loadEmbed();
 }
 
-/* Filtra rigorosamente por MP4 H.264 + AAC que o WebKit/Safari exige */
-function findCompatibleFormat(streams) {
-  if (!streams || !streams.length) return null;
-  
-  // 1. Procura MP4 de 720p ou 360p com video/mp4 e codec avc1/mp4a
-  for (var i = 0; i < streams.length; i++) {
-    var s = streams[i];
-    var container = (s.container || '').toLowerCase();
-    var type = (s.mimeType || s.type || '').toLowerCase();
-    
-    if (container === 'mp4' || type.indexOf('video/mp4') !== -1) {
-      if (type.indexOf('avc1') !== -1 || type.indexOf('mp4a') !== -1 || type === 'video/mp4') {
-        return s;
-      }
-    }
-  }
+function loadEmbed() {
+  var frame = document.getElementById('player-frame');
+  var url = EMBED_PROVIDERS[currentProviderIdx](currentVideoId);
+  document.getElementById('player-msg').textContent = 'Servidor ' + (currentProviderIdx + 1) + ' de ' + EMBED_PROVIDERS.length;
+  frame.src = url;
+}
 
-  // 2. Fallback: Pega o primeiro item que seja container mp4
-  for (var j = 0; j < streams.length; j++) {
-    if ((streams[j].container || '').toLowerCase() === 'mp4') {
-      return streams[j];
-    }
-  }
-
-  return streams[0];
+function switchServer() {
+  currentProviderIdx = (currentProviderIdx + 1) % EMBED_PROVIDERS.length;
+  loadEmbed();
 }
 
 function closePlayer() {
-  var video = document.getElementById('native-player');
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
+  var frame = document.getElementById('player-frame');
+  frame.src = '';
   document.getElementById('player-overlay').className = '';
-}
-
-function goFS() {
-  var video = document.getElementById('native-player');
-  if (video) {
-    if (video.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen(); // Método nativo específico do iOS Safari
-    } else if (video.requestFullscreen) {
-      video.requestFullscreen();
-    } else if (video.webkitRequestFullscreen) {
-      video.webkitRequestFullscreen();
-    }
-  }
 }
 
 function navTo(page) {
