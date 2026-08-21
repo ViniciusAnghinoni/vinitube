@@ -231,18 +231,28 @@ html, body {
   -webkit-flex-shrink: 0; flex-shrink: 0;
 }
 
-#btn-back, #btn-switch {
+#btn-back {
   background: none;
   border: none;
   padding: 6px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   -webkit-flex-shrink: 0; flex-shrink: 0;
+}
+#btn-back svg { width: 22px; height: 22px; fill: #fff; display: block; }
+
+#btn-switch {
+  background: var(--card);
+  border: 1px solid var(--border);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
 }
-#btn-back svg { width: 22px; height: 22px; fill: #fff; display: block; }
 
 #player-msg {
   color: var(--muted);
@@ -489,8 +499,8 @@ html, body {
     <button id="btn-back" onclick="closePlayer()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l4.88-4.88L11 5l-7 7 7 7 1.71-1.71L7.83 13H20v-2z"/></svg>
     </button>
-    <span id="player-msg">Carregando...</span>
-    <button id="btn-switch" onclick="switchServer()">Trocar Servidor</button>
+    <span id="player-msg">Modo Leve</span>
+    <button id="btn-switch" onclick="switchServer()">Trocar Modo</button>
   </div>
   <div id="player-info">
     <div id="p-channel"></div>
@@ -523,18 +533,27 @@ var DEFAULT_CHANNELS = [
   { name: 'TATICADS',             id: 'UCZlR0HdudnFNQ_5KZAMGCmg' }
 ];
 
-/* EMBED INSTANCES QUE BURLAM CORS */
-var EMBED_PROVIDERS = [
-  function(id) { return 'https://piped.video/embed/' + id + '?autoplay=1'; },
-  function(id) { return 'https://invidious.nerqv.ps/embed/' + id + '?autoplay=1'; },
-  function(id) { return 'https://inv.tux.pizza/embed/' + id + '?autoplay=1'; },
-  function(id) { return 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1'; }
-];
-
+/* PROXIES DE FEED RSS */
 var PROXIES = [
   'https://api.allorigins.win/get?url=',
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://corsproxy.io/?'
+];
+
+/* ESTRATÉGIA DE FALLBACK PARA BROWSERS ANTIGOS SEM JS PESADO */
+var EMBED_STRATEGIES = [
+  {
+    name: 'Invidious No-JS (HTML5 Seco)',
+    getUrl: function(id) { return 'https://invidious.nerqv.ps/embed/' + id + '?nojs=1&autoplay=1'; }
+  },
+  {
+    name: 'YouTube Embed Legado',
+    getUrl: function(id) { return 'https://www.youtube.com/embed/' + id + '?autoplay=1&playsinline=1&controls=1&html5=1&rel=0'; }
+  },
+  {
+    name: 'Piped Lite',
+    getUrl: function(id) { return 'https://piped.video/embed/' + id + '?autoplay=1'; }
+  }
 ];
 
 var channels = [];
@@ -542,7 +561,7 @@ var currentFilter = 'all';
 var allVideos = [];
 var loaded = 0;
 var currentVideoId = '';
-var currentProviderIdx = 0;
+var currentStrategyIdx = 0;
 
 window.onload = function() {
   loadChannelStorage();
@@ -741,29 +760,29 @@ function showEmpty(msg) {
   document.getElementById('feed-content').innerHTML = '<p class="empty">' + msg + '</p>';
 }
 
-/* REPRODUÇÃO VIA EMBED DE ALTA COMPATIBILIDADE */
+/* PLAYER COM ESTRATÉGIA NO-JS / EMBED LEVE */
 function openPlayer(id, title, channel, date) {
   currentVideoId = id;
-  currentProviderIdx = 0;
+  currentStrategyIdx = 0;
   
   document.getElementById('p-title').textContent = title || '';
   document.getElementById('p-channel').textContent = channel || '';
   document.getElementById('p-date').textContent = date || '';
   document.getElementById('player-overlay').className = 'open';
 
-  loadEmbed();
+  applyStrategy();
 }
 
-function loadEmbed() {
+function applyStrategy() {
+  var strat = EMBED_STRATEGIES[currentStrategyIdx];
   var frame = document.getElementById('player-frame');
-  var url = EMBED_PROVIDERS[currentProviderIdx](currentVideoId);
-  document.getElementById('player-msg').textContent = 'Servidor ' + (currentProviderIdx + 1) + ' de ' + EMBED_PROVIDERS.length;
-  frame.src = url;
+  document.getElementById('player-msg').textContent = strat.name;
+  frame.src = strat.getUrl(currentVideoId);
 }
 
 function switchServer() {
-  currentProviderIdx = (currentProviderIdx + 1) % EMBED_PROVIDERS.length;
-  loadEmbed();
+  currentStrategyIdx = (currentStrategyIdx + 1) % EMBED_STRATEGIES.length;
+  applyStrategy();
 }
 
 function closePlayer() {
