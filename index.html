@@ -869,7 +869,7 @@ function showEmpty(msg) {
 ============================================= */
 function openPlayer(id, title, channel, date) {
   var choice = prompt(
-    "Escolha o player:\n\n1 = YTNoCookie\n2 = Invidious (leve)\n3 = Invidious 2",
+    "Escolha o player:\n\n1 = OldYtTv\n2 = Invidious (leve)\n3 = Invidious 2",
     "1"
   );
 
@@ -880,7 +880,7 @@ function openPlayer(id, title, channel, date) {
   } else if (choice === "3") {
     url = "https://yt.chocolatemoo53.com/watch?v=" + id;
   } else {
-    url = "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&modestbranding=1";
+    url = "https://www.youtube.com/embed/"+ id + "?html5=1&nohtml5=0";
   }
 
   window.open(url, "_blank");
