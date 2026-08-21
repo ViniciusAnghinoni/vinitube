@@ -322,17 +322,6 @@ html, body {
 
 .empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 13px; line-height: 1.6; }
 
-.err {
-  background: #1a0808;
-  border: 1px solid #3a1212;
-  color: #ff9999;
-  border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 10px;
-}
-
 /* BOTTOM NAV */
 #bot-nav {
   position: fixed;
@@ -482,9 +471,7 @@ html, body {
     </svg>
     <span>Meu<em>Tube</em></span>
   </div>
-  <div id="chips">
-    <!-- chips gerados via JS -->
-  </div>
+  <div id="chips"></div>
 </div>
 
 <!-- MAIN -->
@@ -517,7 +504,7 @@ html, body {
 <!-- PLAYER -->
 <div id="player-overlay">
   <div id="yt-wrap">
-    <video id="native-player" controls autoplay playsinline></video>
+    <video id="native-player" controls autoplay playsinline type="video/mp4"></video>
   </div>
   <div id="player-bar">
     <button id="btn-back" onclick="closePlayer()">
@@ -572,13 +559,12 @@ var loaded = 0;
 var currentPage = 'home';
 
 /* =============================================
-   INSTÂNCIAS DE MIDIA (INVIDIOUS)
+   INSTÂNCIAS DE MIDIA (COBALT PUBLIC APIS)
 ============================================= */
-var INVIDIOUS_INSTANCES = [
-  'https://yewtu.be',
-  'https://invidious.nerdvpn.de',
-  'https://inv.riverside.rocks',
-  'https://invidious.flokinet.to'
+var COBALT_INSTANCES = [
+  'https://co.wuk.sh/api/json',
+  'https://cobalt.stream/api/json',
+  'https://api.cobalt.tools/api/json'
 ];
 
 /* =============================================
@@ -853,7 +839,7 @@ function showEmpty(msg) {
 }
 
 /* =============================================
-   PLAYER NATIVO DE VÍDEO
+   PLAYER NATIVO DE VÍDEO (COBALT EXTRACTION)
 ============================================= */
 function openPlayer(id, title, channel, date) {
   document.getElementById('p-title').textContent = title || '';
@@ -866,57 +852,51 @@ function openPlayer(id, title, channel, date) {
   video.pause();
   video.src = '';
 
-  tryInstance(0);
+  tryCobalt(0);
 
-  function tryInstance(index) {
-    if (index >= INVIDIOUS_INSTANCES.length) {
-      alert('Não foi possível carregar o vídeo. Tente novamente mais tarde.');
+  function tryCobalt(index) {
+    if (index >= COBALT_INSTANCES.length) {
+      alert('Não foi possível obter o stream do vídeo no momento.');
       return;
     }
 
-    var baseUrl = INVIDIOUS_INSTANCES[index];
+    var apiUrl = COBALT_INSTANCES[index];
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', baseUrl + '/api/v1/videos/' + id, true);
-    xhr.timeout = 6000;
+    xhr.open('POST', apiUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.timeout = 8000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
           try {
-            var data = JSON.parse(xhr.responseText);
-            var streamUrl = '';
-
-            // Busca o formato MP4 direto que contém áudio e vídeo combinados
-            if (data.formatStreams && data.formatStreams.length > 0) {
-              for (var i = 0; i < data.formatStreams.length; i++) {
-                var fmt = data.formatStreams[i];
-                if (fmt.container === 'mp4') {
-                  streamUrl = fmt.url;
-                  break;
-                }
-              }
-              if (!streamUrl) streamUrl = data.formatStreams[0].url;
-            }
-
-            if (streamUrl) {
-              video.src = streamUrl;
+            var res = JSON.parse(xhr.responseText);
+            if (res.url) {
+              video.src = res.url;
+              video.load();
               video.play();
             } else {
-              tryInstance(index + 1);
+              tryCobalt(index + 1);
             }
           } catch(e) {
-            tryInstance(index + 1);
+            tryCobalt(index + 1);
           }
         } else {
-          tryInstance(index + 1);
+          tryCobalt(index + 1);
         }
       }
     };
 
-    xhr.onerror = function() { tryInstance(index + 1); };
-    xhr.ontimeout = function() { tryInstance(index + 1); };
+    xhr.onerror = function() { tryCobalt(index + 1); };
+    xhr.ontimeout = function() { tryCobalt(index + 1); };
 
-    xhr.send();
+    // Solicita o vídeo diretamente no formato 480/720p em MP4 (H.264 + AAC)
+    xhr.send(JSON.stringify({
+      url: 'https://www.youtube.com/watch?v=' + id,
+      videoQuality: '720',
+      youtubeVideoCodec: 'h264'
+    }));
   }
 }
 
@@ -942,7 +922,7 @@ function goFS() {
   if (video) {
     if (video.requestFullscreen) video.requestFullscreen();
     else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // Nativo no iOS
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
   }
 }
 
