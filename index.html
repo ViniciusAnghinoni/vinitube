@@ -190,7 +190,7 @@ html, body {
 
 .card-date { font-size: 11px; color: var(--muted); }
 
-/* PLAYER */
+/* PLAYER OVERLAY */
 #player-overlay {
   display: none;
   position: fixed;
@@ -240,28 +240,13 @@ html, body {
 }
 #btn-back svg { width: 22px; height: 22px; fill: #fff; display: block; }
 
-#vol-icon {
-  font-size: 14px;
-  -webkit-flex-shrink: 0; flex-shrink: 0;
-  min-width: 18px;
-  text-align: center;
-}
-
-#vol-range {
+#player-msg {
+  color: var(--muted);
+  font-size: 11px;
   -webkit-flex: 1; flex: 1;
-  -webkit-appearance: none; appearance: none;
-  height: 4px;
-  background: var(--border);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-}
-#vol-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  background: var(--red);
-  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #btn-fs {
@@ -481,12 +466,12 @@ html, body {
   </div>
   <div id="settings-page">
     <h3>⚙️ Canais</h3>
-    <p class="s-note">Seus canais configurados. Para adicionar novos, edite o arquivo .html no computador.</p>
+    <p class="s-note">Gerencie os canais exibidos no seu app.</p>
     <div class="channel-list" id="ch-list"></div>
 
     <div style="margin-top:20px;">
       <h3 style="margin-bottom:4px;">Adicionar canal</h3>
-      <p class="s-note">Cole o Channel ID (começa com UC...) e o nome que quiser exibir.</p>
+      <p class="s-note">Cole o Channel ID (começa com UC...)</p>
       <div class="s-group">
         <label>Nome do Canal</label>
         <input type="text" id="add-name" placeholder="Ex: MeuCanal" autocorrect="off" autocapitalize="none" spellcheck="false">
@@ -504,14 +489,13 @@ html, body {
 <!-- PLAYER -->
 <div id="player-overlay">
   <div id="yt-wrap">
-    <video id="native-player" controls autoplay playsinline type="video/mp4"></video>
+    <video id="native-player" controls playsinline webkit-playsinline preload="metadata"></video>
   </div>
   <div id="player-bar">
     <button id="btn-back" onclick="closePlayer()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l4.88-4.88L11 5l-7 7 7 7 1.71-1.71L7.83 13H20v-2z"/></svg>
     </button>
-    <span id="vol-icon">🔊</span>
-    <input type="range" id="vol-range" min="0" max="100" value="80" oninput="setVol(this.value)">
+    <span id="player-msg">Carregando mídias...</span>
     <button id="btn-fs" onclick="goFS()">
       <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
     </button>
@@ -536,9 +520,7 @@ html, body {
 </div>
 
 <script>
-/* =============================================
-   CANAIS PRÉ-CONFIGURADOS
-============================================= */
+/* CANAIS PRÉ-CONFIGURADOS */
 var DEFAULT_CHANNELS = [
   { name: '1155 do ET',           id: 'UCG-KRRI41P4TsaOMeAM9dug' },
   { name: 'Cortes do ET',         id: 'UC3HBGe8y6rFOAR3l118eUag' },
@@ -549,40 +531,26 @@ var DEFAULT_CHANNELS = [
   { name: 'TATICADS',             id: 'UCZlR0HdudnFNQ_5KZAMGCmg' }
 ];
 
-/* =============================================
-   ESTADO
-============================================= */
-var channels = [];
-var currentFilter = 'all';
-var allVideos = [];
-var loaded = 0;
-var currentPage = 'home';
-
-/* =============================================
-   INSTÂNCIAS DE MIDIA (COBALT PUBLIC APIS)
-============================================= */
-var COBALT_INSTANCES = [
-  'https://co.wuk.sh/api/json',
-  'https://cobalt.stream/api/json',
-  'https://api.cobalt.tools/api/json'
+/* INSTÂNCIAS PÚBLICAS DO INVIDIOUS (COM PROXY DE MÍDIA COMPATÍVEL) */
+var INVIDIOUS_INSTANCES = [
+  'https://invidious.nerqv.ps',
+  'https://inv.tux.pizza',
+  'https://invidious.projectsegfau.lt',
+  'https://vid.puffyan.us'
 ];
 
-/* =============================================
-   RSS → CORS PROXY
-============================================= */
+/* PROXIES DE FEED RSS */
 var PROXIES = [
   'https://api.allorigins.win/get?url=',
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://corsproxy.io/?'
 ];
 
-function rssUrl(channelId) {
-  return 'https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId;
-}
+var channels = [];
+var currentFilter = 'all';
+var allVideos = [];
+var loaded = 0;
 
-/* =============================================
-   INIT
-============================================= */
 window.onload = function() {
   loadChannelStorage();
   buildChips();
@@ -590,17 +558,10 @@ window.onload = function() {
   loadAllFeeds();
 };
 
-/* =============================================
-   STORAGE
-============================================= */
 function loadChannelStorage() {
   try {
     var stored = localStorage.getItem('mt_channels');
-    if (stored) {
-      channels = JSON.parse(stored);
-    } else {
-      channels = DEFAULT_CHANNELS.slice();
-    }
+    channels = stored ? JSON.parse(stored) : DEFAULT_CHANNELS.slice();
   } catch(e) {
     channels = DEFAULT_CHANNELS.slice();
   }
@@ -610,9 +571,6 @@ function saveChannelStorage() {
   try { localStorage.setItem('mt_channels', JSON.stringify(channels)); } catch(e) {}
 }
 
-/* =============================================
-   CHIPS (filtros de canal no header)
-============================================= */
 function buildChips() {
   var bar = document.getElementById('chips');
   var html = '<button class="chip active" data-id="all" onclick="filterBy(\'all\', this)">Todos</button>';
@@ -632,16 +590,13 @@ function filterBy(id, el) {
   renderFeed();
 }
 
-/* =============================================
-   LOAD RSS DE TODOS OS CANAIS
-============================================= */
 function loadAllFeeds() {
   allVideos = [];
   loaded = 0;
   showSpinner('Buscando vídeos...');
 
   if (channels.length === 0) {
-    showEmpty('Nenhum canal configurado. Vá em Canais para adicionar.');
+    showEmpty('Nenhum canal configurado.');
     return;
   }
 
@@ -660,43 +615,23 @@ function loadAllFeeds() {
 }
 
 function fetchRSS(channelId, channelName, cb) {
-  var target = encodeURIComponent(rssUrl(channelId));
+  var target = encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId);
   tryProxies(0);
 
   function tryProxies(index) {
-    if (index >= PROXIES.length) {
-      console.warn('Todos proxies falharam:', channelName);
-      cb([]);
-      return;
-    }
-
-    var proxy = PROXIES[index];
-    var url = proxy + target;
+    if (index >= PROXIES.length) { cb([]); return; }
 
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
+    xhr.open('GET', PROXIES[index] + target, true);
     xhr.timeout = 5000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState !== 4) return;
-
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          var xml = '';
-
-          if (proxy.indexOf('allorigins') !== -1) {
-            var json = JSON.parse(xhr.responseText);
-            xml = json.contents || '';
-          } else {
-            xml = xhr.responseText;
-          }
-
-          if (!xml || xml.indexOf('<feed') === -1) {
-            throw 'Resposta inválida';
-          }
-
-          var videos = parseRSS(xml, channelName, channelId);
-          cb(videos);
+          var xml = (PROXIES[index].indexOf('allorigins') !== -1) ? JSON.parse(xhr.responseText).contents : xhr.responseText;
+          if (!xml || xml.indexOf('<feed') === -1) throw 'Invalido';
+          cb(parseRSS(xml, channelName, channelId));
         } catch (e) {
           tryProxies(index + 1);
         }
@@ -704,87 +639,63 @@ function fetchRSS(channelId, channelName, cb) {
         tryProxies(index + 1);
       }
     };
-
-    xhr.onerror = function() { tryProxies(index + 1); };
-    xhr.ontimeout = function() { tryProxies(index + 1); };
-
+    xhr.onerror = xhr.ontimeout = function() { tryProxies(index + 1); };
     xhr.send();
   }
 }
 
-/* =============================================
-   PARSER RSS
-============================================= */
 function parseRSS(xml, channelName, channelId) {
   var videos = [];
   var entries = xml.split('<entry>');
   for (var i = 1; i < entries.length; i++) {
     var block = entries[i];
-
-    var videoId  = grab(block, '<yt:videoId>', '</yt:videoId>');
-    var title    = grabCDATA(block, '<title>',     '</title>');
-    var pubRaw   = grab(block, '<published>',  '</published>');
-    var thumb    = grabAttr(block, '<media:thumbnail', 'url');
+    var videoId = grab(block, '<yt:videoId>', '</yt:videoId>');
+    var title   = grabCDATA(block, '<title>', '</title>');
+    var pubRaw  = grab(block, '<published>', '</published>');
+    var thumb   = grabAttr(block, '<media:thumbnail', 'url');
 
     if (!videoId) continue;
-
     var ts = pubRaw ? new Date(pubRaw).getTime() : 0;
 
     videos.push({
-      id:      videoId,
-      title:   decodeXML(title),
+      id: videoId,
+      title: decodeXML(title),
       channel: channelName,
-      chId:    channelId,
-      pub:     pubRaw,
-      ts:      ts,
-      thumb:   thumb || ('https://i.ytimg.com/vi/' + videoId + '/mqdefault.jpg')
+      chId: channelId,
+      ts: ts,
+      thumb: thumb || ('https://i.ytimg.com/vi/' + videoId + '/mqdefault.jpg')
     });
   }
-
   return videos;
 }
 
 function grab(str, open, close) {
-  var s = str.indexOf(open);
-  if (s === -1) return '';
+  var s = str.indexOf(open); if (s === -1) return '';
   s += open.length;
-  var e = str.indexOf(close, s);
-  if (e === -1) return '';
+  var e = str.indexOf(close, s); if (e === -1) return '';
   return str.substring(s, e).trim();
 }
 
 function grabCDATA(str, open, close) {
   var raw = grab(str, open, close);
-  raw = raw.replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '');
-  return raw.trim();
+  return raw.replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '').trim();
 }
 
 function grabAttr(str, tag, attr) {
-  var s = str.indexOf(tag);
-  if (s === -1) return '';
+  var s = str.indexOf(tag); if (s === -1) return '';
   var end = str.indexOf('>', s);
   var chunk = str.substring(s, end);
   var a = attr + '="';
-  var ai = chunk.indexOf(a);
-  if (ai === -1) return '';
+  var ai = chunk.indexOf(a); if (ai === -1) return '';
   ai += a.length;
   var ae = chunk.indexOf('"', ai);
   return chunk.substring(ai, ae);
 }
 
 function decodeXML(s) {
-  return s
-    .replace(/&amp;/g,  '&')
-    .replace(/&lt;/g,   '<')
-    .replace(/&gt;/g,   '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g,  "'")
-    .replace(/&apos;/g, "'");
+  return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
-/* =============================================
-   RENDER FEED
-============================================= */
 function renderFeed() {
   var list = allVideos;
   if (currentFilter !== 'all') {
@@ -795,9 +706,8 @@ function renderFeed() {
   }
 
   var fc = document.getElementById('feed-content');
-
   if (list.length === 0) {
-    fc.innerHTML = '<p class="empty">Nenhum vídeo encontrado.<br>Verifique os IDs dos canais em Canais.</p>';
+    fc.innerHTML = '<p class="empty">Nenhum vídeo encontrado.</p>';
     return;
   }
 
@@ -805,7 +715,7 @@ function renderFeed() {
   var html = '<div class="section-head">▶ ' + list.length + ' vídeos recentes</div>';
 
   for (var j = 0; j < list.length; j++) {
-    var v    = list[j];
+    var v = list[j];
     var isNew = v.ts && (now - v.ts) < 48 * 3600 * 1000;
     var dateStr = v.ts ? relTime(new Date(v.ts)) : '';
 
@@ -838,99 +748,133 @@ function showEmpty(msg) {
   document.getElementById('feed-content').innerHTML = '<p class="empty">' + msg + '</p>';
 }
 
-/* =============================================
-   PLAYER NATIVO DE VÍDEO (COBALT EXTRACTION)
-============================================= */
+/* PLAYER COM EXTRAÇÃO DE MP4 H.264 VIA INVIDIOUS PROXY */
 function openPlayer(id, title, channel, date) {
   document.getElementById('p-title').textContent = title || '';
   document.getElementById('p-channel').textContent = channel || '';
   document.getElementById('p-date').textContent = date || '';
+  document.getElementById('player-msg').textContent = 'Conectando ao servidor...';
   
   document.getElementById('player-overlay').className = 'open';
 
   var video = document.getElementById('native-player');
   video.pause();
-  video.src = '';
+  video.removeAttribute('src');
+  video.load();
 
-  tryCobalt(0);
+  tryInvidious(0);
 
-  function tryCobalt(index) {
-    if (index >= COBALT_INSTANCES.length) {
-      alert('Não foi possível obter o stream do vídeo no momento.');
+  function tryInvidious(index) {
+    if (index >= INVIDIOUS_INSTANCES.length) {
+      document.getElementById('player-msg').textContent = 'Erro ao carregar mídia.';
+      alert('Não foi possível obter um link direto compatível no momento.');
       return;
     }
 
-    var apiUrl = COBALT_INSTANCES[index];
+    var baseUrl = INVIDIOUS_INSTANCES[index];
+    var apiUrl = baseUrl + '/api/v1/videos/' + id;
+
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', apiUrl, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.setRequestHeader('Accept', 'application/json');
-    xhr.timeout = 8000;
+    xhr.open('GET', apiUrl, true);
+    xhr.timeout = 7000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
           try {
-            var res = JSON.parse(xhr.responseText);
-            if (res.url) {
-              video.src = res.url;
+            var data = JSON.parse(xhr.responseText);
+            var format = findCompatibleFormat(data.formatStreams);
+
+            if (format && format.url) {
+              // Garante o uso do proxy do próprio Invidious para evitar bloqueios de CORS/MIME no Safari
+              var finalUrl = format.url;
+              if (finalUrl.indexOf('http') !== 0) {
+                finalUrl = baseUrl + finalUrl;
+              }
+              
+              // Força o roteamento pelo proxy da instância se não estiver
+              if (finalUrl.indexOf('local=true') === -1) {
+                finalUrl += (finalUrl.indexOf('?') === -1 ? '?' : '&') + 'local=true';
+              }
+
+              document.getElementById('player-msg').textContent = 'Pronto';
+              video.src = finalUrl;
               video.load();
-              video.play();
+              
+              // Execução segura para iOS 10 (Inicia no play e lida com bloqueios)
+              var playPromise = video.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(function() {
+                  video.muted = true;
+                  video.play();
+                });
+              }
             } else {
-              tryCobalt(index + 1);
+              tryInvidious(index + 1);
             }
           } catch(e) {
-            tryCobalt(index + 1);
+            tryInvidious(index + 1);
           }
         } else {
-          tryCobalt(index + 1);
+          tryInvidious(index + 1);
         }
       }
     };
 
-    xhr.onerror = function() { tryCobalt(index + 1); };
-    xhr.ontimeout = function() { tryCobalt(index + 1); };
-
-    // Solicita o vídeo diretamente no formato 480/720p em MP4 (H.264 + AAC)
-    xhr.send(JSON.stringify({
-      url: 'https://www.youtube.com/watch?v=' + id,
-      videoQuality: '720',
-      youtubeVideoCodec: 'h264'
-    }));
+    xhr.onerror = xhr.ontimeout = function() { tryInvidious(index + 1); };
+    xhr.send();
   }
+}
+
+/* Filtra rigorosamente por MP4 H.264 + AAC que o WebKit/Safari exige */
+function findCompatibleFormat(streams) {
+  if (!streams || !streams.length) return null;
+  
+  // 1. Procura MP4 de 720p ou 360p com video/mp4 e codec avc1/mp4a
+  for (var i = 0; i < streams.length; i++) {
+    var s = streams[i];
+    var container = (s.container || '').toLowerCase();
+    var type = (s.mimeType || s.type || '').toLowerCase();
+    
+    if (container === 'mp4' || type.indexOf('video/mp4') !== -1) {
+      if (type.indexOf('avc1') !== -1 || type.indexOf('mp4a') !== -1 || type === 'video/mp4') {
+        return s;
+      }
+    }
+  }
+
+  // 2. Fallback: Pega o primeiro item que seja container mp4
+  for (var j = 0; j < streams.length; j++) {
+    if ((streams[j].container || '').toLowerCase() === 'mp4') {
+      return streams[j];
+    }
+  }
+
+  return streams[0];
 }
 
 function closePlayer() {
   var video = document.getElementById('native-player');
   video.pause();
-  video.src = '';
+  video.removeAttribute('src');
+  video.load();
   document.getElementById('player-overlay').className = '';
-}
-
-function setVol(v) {
-  v = parseInt(v, 10);
-  var icon = document.getElementById('vol-icon');
-  icon.textContent = v === 0 ? '🔇' : v < 40 ? '🔉' : '🔊';
-  var video = document.getElementById('native-player');
-  if (video) {
-    video.volume = v / 100;
-  }
 }
 
 function goFS() {
   var video = document.getElementById('native-player');
   if (video) {
-    if (video.requestFullscreen) video.requestFullscreen();
-    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    if (video.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen(); // Método nativo específico do iOS Safari
+    } else if (video.requestFullscreen) {
+      video.requestFullscreen();
+    } else if (video.webkitRequestFullscreen) {
+      video.webkitRequestFullscreen();
+    }
   }
 }
 
-/* =============================================
-   NAV
-============================================= */
 function navTo(page) {
-  currentPage = page;
   document.getElementById('nav-home').className     = 'nav-btn' + (page === 'home'     ? ' active' : '');
   document.getElementById('nav-settings').className = 'nav-btn' + (page === 'settings' ? ' active' : '');
   document.getElementById('feed').style.display          = page === 'home'     ? 'block' : 'none';
@@ -939,9 +883,6 @@ function navTo(page) {
   if (page === 'settings') buildChList();
 }
 
-/* =============================================
-   SETTINGS — gerenciar canais
-============================================= */
 function buildChList() {
   var el = document.getElementById('ch-list');
   if (!el) return;
@@ -953,7 +894,7 @@ function buildChList() {
       + '<button class="btn-secondary" onclick="removeChannel(' + i + ')">✕</button>'
       + '</div>';
   }
-  el.innerHTML = html || '<p class="empty" style="padding:10px 0;">Nenhum canal.</p>';
+  el.innerHTML = html || '<p class="empty">Nenhum canal.</p>';
 }
 
 function addChannel() {
@@ -967,9 +908,6 @@ function addChannel() {
   document.getElementById('add-id').value = '';
   buildChList();
   buildChips();
-  allVideos = [];
-  loaded = 0;
-  showSpinner('Atualizando...');
   loadAllFeeds();
 }
 
@@ -979,12 +917,6 @@ function removeChannel(i) {
   saveChannelStorage();
   buildChList();
   buildChips();
-  allVideos = allVideos.filter(function(v) {
-    for (var j = 0; j < channels.length; j++) {
-      if (v.chId === channels[j].id) return true;
-    }
-    return false;
-  });
   renderFeed();
 }
 
@@ -994,19 +926,12 @@ function resetChannels() {
   saveChannelStorage();
   buildChList();
   buildChips();
-  allVideos = [];
-  loaded = 0;
   loadAllFeeds();
   navTo('home');
 }
 
-/* =============================================
-   HELPERS
-============================================= */
 function escH(s) {
-  return String(s || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function escAttr(s) {
